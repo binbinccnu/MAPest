@@ -200,7 +200,10 @@ temp.type = iDynTree.NET_EXT_WRENCH_SENSOR;
 temp.id = 'LeftHand';
 sensorsToBeRemoved = [sensorsToBeRemoved; temp];
 
+profile on
 [mu_dgiveny, Sigma_dgiveny] = MAPcomputation(berdy, human_state, y, priors, 'SENSORS_TO_REMOVE', sensorsToBeRemoved);
+profile viewer
+profile off
 
-% plot results
-finalPlot
+% % plot results
+% finalPlot
