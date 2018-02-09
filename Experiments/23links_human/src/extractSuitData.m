@@ -1,11 +1,13 @@
-function [ suit ] = extractSuitData(mvnxFilename, outputDir)
+function [suit] = extractSuitData(mvnxData, ver, outputDir)
 %EXTRACTSUITDATA allows to create a .mat stucture containing all suit data
 % acquired during the Xsens experiment. Since Xsens provides the data in a
 % .mvnx file, you need the following dependency to run it:
 % /MAPest/external/xml_io_tools.
 %
 % Inputs 
-% -  mvnxFilename : the path to the file.mvnx;
+% -  mvnxData     : Matlab struct read from the file .mvnx;
+% -  ver          : version of the file.  This will be determinant for
+%                   parsing different values;
 % -  outputDir    : (optional) the directory where saving the output.
 % Outputs
 % -  suit         : data of the acquisition in a .mat format. 
@@ -15,37 +17,58 @@ function [ suit ] = extractSuitData(mvnxFilename, outputDir)
 % - S = sensor
 % - L = link
 
-%% Load and read file .mvnx
-addpath(genpath('../../external'));
-mvnxData = xml_read(mvnxFilename);
+
+%% Check the version
+if ver == '2018.0.0'
+    newMVN = true;
+end
+
 %% Create data struct
 suit =[];
-% PROPERTIES
+% ------------------------ PROPERTIES
 suit.properties.experimentLabel = mvnxData.subject.ATTRIBUTE.label;
 suit.properties.recordingDate   = mvnxData.subject.ATTRIBUTE.recDate;
-suit.properties.frameRate       = mvnxData.subject.ATTRIBUTE.frameRate;
 nrOfFrames                      = size(mvnxData.subject.frames.frame,1);
+suit.properties.lenData         = size(mvnxData.subject.frames.frame,1);
 suit.properties.nrOfLinks       = mvnxData.subject.frames.ATTRIBUTE.segmentCount;
 suit.properties.nrOfJoints      = mvnxData.subject.frames.ATTRIBUTE.jointCount;
 suit.properties.nrOfSensors     = mvnxData.subject.frames.ATTRIBUTE.sensorCount;
 suit.properties.lenData         = nrOfFrames;
-% CALIBRATION 
+
+% ------------------------ CALIBRATION
 suit.calibration = struct;
 counterCalibr = 0;
-for j = 1 : suit.properties.lenData
-    if (strcmp(mvnxData.subject.frames.frame(j).ATTRIBUTE.type , 'npose'))
-        counterCalibr = counterCalibr + 1;
+if newMVN
+    for j = 1 : suit.properties.lenData
+            if (strcmp(mvnxData.subject.frames.frame(j).ATTRIBUTE.type , 'identity'))
+                counterCalibr = counterCalibr + 1;
+            end
+            if (strcmp(mvnxData.subject.frames.frame(j).ATTRIBUTE.type , 'tpose'))
+                counterCalibr = counterCalibr + 1;
+            end
+            if (strcmp(mvnxData.subject.frames.frame(j).ATTRIBUTE.type , 'tpose-isb'))
+                counterCalibr = counterCalibr + 1;
+            end
     end
-    if (strcmp(mvnxData.subject.frames.frame(j).ATTRIBUTE.type , 'tpose'))
-        counterCalibr = counterCalibr + 1;
+else
+    for j = 1 : suit.properties.lenData
+        if (strcmp(mvnxData.subject.frames.frame(j).ATTRIBUTE.type , 'npose'))
+            counterCalibr = counterCalibr + 1;
+        end
+        if (strcmp(mvnxData.subject.frames.frame(j).ATTRIBUTE.type , 'tpose'))
+            counterCalibr = counterCalibr + 1;
+        end
     end
 end
 suit.properties.lenData = suit.properties.lenData - counterCalibr;
-% TIME
+
+% ------------------------ TIME
 suit.time = zeros(1,suit.properties.lenData);
-% COM
+
+% ------------------------ COM
 suit.COM  = zeros(3,suit.properties.lenData);
-% LINKS
+
+% ------------------------ LINKS
 suit.links = cell(suit.properties.nrOfLinks, 1);
 for i = 1 : suit.properties.nrOfLinks
     suit.links{i}.id = mvnxData.subject.segments.segment(i).ATTRIBUTE.id;
@@ -62,10 +85,21 @@ for i = 1 : suit.properties.nrOfLinks
     suit.links{i}.points.pointsValue       = zeros(3,suit.links{i}.points.nrOfPoints);
     for k = 1 : suit.links{i}.points.nrOfPoints
         suit.links{i}.points.label(1,k) = cellstr(mvnxData.subject.segments.segment(i).points.point(k).ATTRIBUTE.label);
+        if newMVN
+        suit.links{i}.points.pointsValue(:,k) = mvnxData.subject.segments.segment(i).points.point(k).pos_b;
+        else
         suit.links{i}.points.pointsValue(:,k) = mvnxData.subject.segments.segment(i).points.point(k).pos_s;
+        end
     end
 end
-% JOINTS
+
+% ------------------------ CONTACTS
+if newMVN
+    %to be written. it is neiter related to the link nor joint or sensor but
+    %it is related to the frame.  Maybe another field? ?
+end
+
+% ------------------------ JOINTS
 suit.joints = cell(suit.properties.nrOfJoints,1);
 for i = 1 : suit.properties.nrOfJoints
     suit.joints{i}.label              = mvnxData.subject.joints.joint(i).ATTRIBUTE.label;
@@ -73,15 +107,22 @@ for i = 1 : suit.properties.nrOfJoints
     suit.joints{i}.meas.jointAngle    = zeros(3, suit.properties.lenData);
     suit.joints{i}.meas.jointAngleXZY = zeros(3, suit.properties.lenData);
 end
-% SENSORS
+
+% ------------------------ SENSORS
 suit.sensors = cell(suit.properties.nrOfSensors,1);
 for i = 1 : suit.properties.nrOfSensors
     suit.sensors{i}.label                      = mvnxData.subject.sensors.sensor(i).ATTRIBUTE.label;
     suit.sensors{i}.attachedLink               = suit.sensors{i}.label; % assumption: the label of the sensor is the same one of the link on which the sensor isattached  
-    suit.sensors{i}.meas.sensorAcceleration    = zeros(3, suit.properties.lenData);
-    suit.sensors{i}.meas.sensorAngularVelocity = zeros(3, suit.properties.lenData);
     suit.sensors{i}.meas.sensorOrientation     = zeros(4, suit.properties.lenData);
-end 
+    if newMVN
+        suit.sensors{i}.meas.sensorFreeAcceleration = zeros(3, suit.properties.lenData);
+        suit.sensors{i}.meas.sensorMagneticField    = zeros(3, suit.properties.lenData);
+    else
+        suit.sensors{i}.meas.sensorAcceleration    = zeros(3, suit.properties.lenData);
+        suit.sensors{i}.meas.sensorAngularVelocity = zeros(3, suit.properties.lenData);
+    end
+end
+
 %% Fill the struct with recording data
 a = 4; %dimension of quaternions
 b = 3; %dimension of vectors
@@ -179,7 +220,7 @@ for frameIdx = 1 : nrOfFrames
     j = j + 1;
 end
 %% Save data in a file.mat
-if nargin == 2
+if nargin == 3
     filename = sprintf('%s_suit.mat',strrep(strtrim(suit.properties.experimentLabel),' ','_'));
     if ~exist(outputDir,'dir')
         mkdir(outputDir);

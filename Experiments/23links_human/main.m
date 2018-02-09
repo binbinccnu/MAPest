@@ -19,10 +19,30 @@ trialID = 20;
 %% Java path needed by OSIM
 setupJAVAPath();
 
-%% Load measurements from SUIT
-% bucket.mvnxFilename = sprintf('data/Subj-0%d%d.mvnx',trialID0, trialID);
-% suit = extractSuitData(bucket.mvnxFilename,'data002');
-% suit = computeSuitSensorPosition(suit); % obtain sensors position
+%% Read data from file
+bucket.pathToDataFolder = fullfile(pwd,'/data/');
+if ~exist(fullfile(bucket.pathToDataFolder,'mvnxData.mat'))
+    bucket.mvnxData = xml_read(mvnxFilename);
+    save(fullfile(bucket.pathToDataFolder,'mvnxData.mat'));
+else
+    load(fullfile(bucket.pathToDataFolder,'mvnxData.mat'));
+end
+% Gather the MVN version for the parser
+bucket.version  = mvnxData.mvn.ATTRIBUTE.version;
+
+%% Extract measurements from SUIT
+if ~exist(fullfile(bucket.pathToDataFolder,'suit.mat'))
+    suit = extractSuitData(mvnxData, bucket.version);
+    % suit = computeSuitSensorPosition(suit); % obtain sensors position
+    save(fullfile(bucket.pathToDataFolder,'suit.mat'));
+else
+    load(fullfile(bucket.pathToDataFolder,'suit.mat'));
+end
+
+
+
+
+
 
 %% Load measurements from FORCEPLATES and ROBOT
 bucket.AMTIfilename          = sprintf('data/AMTIdata0%d%d.txt',trialID0, trialID);
