@@ -20,10 +20,14 @@ trialID = 20;
 setupJAVAPath();
 
 %% Read data from file
-bucket.pathToDataFolder = fullfile(pwd,'/data/');
+% Insert manually the name of your file
+bucket.acquisitionFile = 'acquisition_old.mvnx';
+
+bucket.pathToDataFolder = fullfile(pwd,'/data');
 if ~exist(fullfile(bucket.pathToDataFolder,'mvnxData.mat'))
-    bucket.mvnxData = xml_read(mvnxFilename);
-    save(fullfile(bucket.pathToDataFolder,'mvnxData.mat'));
+    bucket.mvnxFilename = fullfile(bucket.pathToDataFolder,bucket.acquisitionFile);
+    mvnxData = xml_read(bucket.mvnxFilename);
+    save(fullfile(bucket.pathToDataFolder,'/mvnxData.mat'),'mvnxData');
 else
     load(fullfile(bucket.pathToDataFolder,'mvnxData.mat'));
 end
@@ -34,15 +38,10 @@ bucket.version  = mvnxData.mvn.ATTRIBUTE.version;
 if ~exist(fullfile(bucket.pathToDataFolder,'suit.mat'))
     suit = extractSuitData(mvnxData, bucket.version);
     % suit = computeSuitSensorPosition(suit); % obtain sensors position
-    save(fullfile(bucket.pathToDataFolder,'suit.mat'));
+    save(fullfile(bucket.pathToDataFolder,'suit.mat'),'suit');
 else
     load(fullfile(bucket.pathToDataFolder,'suit.mat'));
 end
-
-
-
-
-
 
 %% Load measurements from FORCEPLATES and ROBOT
 bucket.AMTIfilename          = sprintf('data/AMTIdata0%d%d.txt',trialID0, trialID);
