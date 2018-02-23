@@ -95,12 +95,6 @@ for i = 1 : suit.properties.nrOfLinks
     end
 end
 
-% ------------------------ CONTACTS
-if newMVN
-    %to be written. it is neiter related to the link nor joint or sensor but
-    %it is related to the frame.  Maybe another field? ?
-end
-
 % ------------------------ JOINTS
 suit.joints = cell(suit.properties.nrOfJoints,1);
 for i = 1 : suit.properties.nrOfJoints
@@ -210,6 +204,14 @@ for frameIdx = 1 : nrOfFrames
     suit.time(1,j) = currentFrame.ATTRIBUTE.ms;
     % COM
     suit.COM(:,j) = currentFrame.centerOfMass';
+    %  CONTACTS
+    if newMVN
+        suit.contacts = cell(nrOfFrames,1);
+        for i = 4 : nrOfFrames-3
+            suit.contacts{i}(1)     = mvnxData.subject.frames.frame(i).contacts.contact(1).ATTRIBUTE;
+            suit.contacts{i}(2)     = mvnxData.subject.frames.frame(i).contacts.contact(2).ATTRIBUTE;
+        end
+    end
     % LINKS
     %temporary variables
     quaternion = iDynTree.Vector4();
