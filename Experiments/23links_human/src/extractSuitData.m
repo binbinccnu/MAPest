@@ -36,6 +36,7 @@ suit.properties.nrOfLinks       = mvnxData.subject.frames.ATTRIBUTE.segmentCount
 suit.properties.nrOfJoints      = mvnxData.subject.frames.ATTRIBUTE.jointCount;
 suit.properties.nrOfSensors     = size(mvnxData.subject.sensors.sensor,1);
 suit.properties.lenData         = nrOfFrames;
+suit.properties.frameRate       = mvnxData.subject.ATTRIBUTE.frameRate;
 
 % ------------------------ CALIBRATION
 suit.calibration = struct;
