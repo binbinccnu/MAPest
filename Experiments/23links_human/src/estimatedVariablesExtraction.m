@@ -1,4 +1,4 @@
-function [estimated_variables] = estimatedVariablesExtraction(berdy, currentBase, mu_dgiveny)
+function [estimated_variables, jointList] = estimatedVariablesExtraction(berdy, currentBase, mu_dgiveny)
 %ESTIMATEDVARIABLESEXTRACTION creates a structure where is specified the
 % type/value of the extracted variable from the vector mu_dgiveny (i.e., d).
 % This function is taylored for 48-DoF model (it has to be modified for
@@ -69,7 +69,12 @@ list_rotz = {'jRightAnkle_rotz';
              'jRightWrist_rotz';
              'jLeftWrist_rotz'
              };
-        
+
+jointList = struct;
+jointList.list_rotx = list_rotx;
+jointList.list_roty = list_roty;
+jointList.list_rotz = list_rotz;
+
 %% List of links
 % Links are randomly ordered!
 list_link = {'LeftFoot';

@@ -43,7 +43,6 @@ else
     disp(strcat('Current formalism is floating base.'));
 end
 
-
 %% Load measurements from SUIT
 if ~exist(fullfile(bucket.pathToProcessedData,'suit.mat'))
     bucket.mvnxFilename = sprintf(fullfile(bucket.pathToTrial,...
@@ -389,6 +388,29 @@ if opts.floatingBase
     estimated_variables = estimatedVariablesExtraction_floating(berdy, mu_dgiveny);
     save(fullfile(bucket.inFolder,'/estimated_variables.mat'),'estimated_variables');
     %--------------------------------------------------------
+    % tau computation via berdy
+    bucket.nrOfSamples = size(y, 2);
+    mu_dgiveny_berdy = iDynTree.VectorDynSize();
+    q_berdy = iDynTree.VectorDynSize();
+    tau_berdy = iDynTree.VectorDynSize(); %the output
+    tau_vector = zeros(size(human_state.q));
+    tauFromBerdy = zeros(size(human_state.q));
+    for i = 1 : bucket.nrOfSamples
+        mu_dgiveny_berdy.fromMatlab(mu_dgiveny(:,i));
+        q_berdy.fromMatlab(human_state.q(:,i));
+        tau_berdy.fromMatlab(tau_vector(:,i));
+
+        berdy.extractJointTorquesFromDynamicVariables(mu_dgiveny_berdy,q_berdy, tau_berdy);
+        tauFromBerdy(:,i) = tau_berdy.toMatlab;
+    end
+    % load struct
+    computedTauFromBerdy = struct;
+    for i = 1 : size(tauFromBerdy,1)
+        computedTauFromBerdy(i).label = selectedJoints(i);
+        computedTauFromBerdy(i).values = tauFromBerdy(i,:);
+    end
+    save(fullfile(bucket.inFolder,'/computedTauFromBerdy.mat'),'computedTauFromBerdy');
+    %--------------------------------------------------------
     % Sigma_tau extraction from Sigma d --> since sigma d is very big, it
     % cannot be saved! therefore once computed it is necessary to extract data
     % related to tau and save that one!
@@ -412,8 +434,11 @@ if opts.fixedBase
     end
     %--------------------------------------------------------
     % variables extraction
-    estimated_variables = estimatedVariablesExtraction(berdy, currentBase, mu_dgiveny);
-    save(fullfile(bucket.inFolder,'/estimated_variables.mat'),'estimated_variables');
+    [estimated_variables,jointList] = estimatedVariablesExtraction(berdy, currentBase, mu_dgiveny);
+    extractedVariables = struct;
+    extractedVariables.values = estimated_variables;
+    extractedVariables.jointList = jointList;
+    save(fullfile(bucket.inFolder,'/extractedVariables.mat'),'extractedVariables');
     %--------------------------------------------------------
     % Sigma_tau extraction from Sigma d --> since sigma d is very big, it
     % cannot be saved! therefore once computed it is necessary to extract data

@@ -13,18 +13,61 @@ bucket.pathToTrial   = sprintf(fullfile(bucket.pathToSubject,'/trial_0%02d'),tri
 bucket.pathToProcessedData   = fullfile(bucket.pathToTrial,'/processed');
 
 var_fromFloating = load(fullfile(bucket.pathToProcessedData,'/floating/estimated_variables.mat'),'estimated_variables');
-var_fromFixed = load(fullfile(bucket.pathToProcessedData,'/shoes/estimated_variables.mat'),'estimated_variables');
+var_fromFixed_struct = load(fullfile(bucket.pathToProcessedData,'/shoes/extractedVariables.mat'),'extractedVariables');
+var_fromFixed = var_fromFixed_struct.extractedVariables.values;
 
 range_cut_plot = (1:2000); %2000 is manually added in MAP computation
+
+tau_fromFloating_berdy = load(fullfile(bucket.pathToProcessedData, '/floating/computedTauFromBerdy.mat'),'computedTauFromBerdy');
+% cut data
+for i = 1 : size(tau_fromFloating_berdy.computedTauFromBerdy,2)
+    tau_fromFloating_berdy.computedTauFromBerdy(i).values = ...
+        tau_fromFloating_berdy.computedTauFromBerdy(i).values(:,range_cut_plot);
+end
+
+% At this stage, tau_fromFloating_berdy is not ordered as tau coming from
+% the fixed version.  The following for ordering tau_fromFloating_berdy
+% as the one from the fixed, making 2 bvariables consistent!
+% ---rot_x
+tau_fromFloating_berdy.computedTauFromBerdy_ordered.rotx = cell(length(var_fromFloating.estimated_variables.intForce.rotx),1);
+for i = 1 : length(var_fromFloating.estimated_variables.intForce.rotx)
+    for j = 1 : size(tau_fromFloating_berdy.computedTauFromBerdy,2)
+        if strcmp(var_fromFixed_struct.extractedVariables.jointList.list_rotx{i,1}, cell2mat(tau_fromFloating_berdy.computedTauFromBerdy(j).label))
+           tau_fromFloating_berdy.computedTauFromBerdy_ordered.rotx{i,1}.label = var_fromFixed_struct.extractedVariables.jointList.list_rotx{i,1};
+           tau_fromFloating_berdy.computedTauFromBerdy_ordered.rotx{i,1}.tau   = tau_fromFloating_berdy.computedTauFromBerdy(j).values;
+        end
+    end
+end
+% ---rot_y
+tau_fromFloating_berdy.computedTauFromBerdy_ordered.roty = cell(length(var_fromFloating.estimated_variables.intForce.roty),1);
+for i = 1 : length(var_fromFloating.estimated_variables.intForce.roty)
+    for j = 1 : size(tau_fromFloating_berdy.computedTauFromBerdy,2)
+        if strcmp(var_fromFixed_struct.extractedVariables.jointList.list_roty{i,1}, cell2mat(tau_fromFloating_berdy.computedTauFromBerdy(j).label))
+           tau_fromFloating_berdy.computedTauFromBerdy_ordered.roty{i,1}.label = var_fromFixed_struct.extractedVariables.jointList.list_roty{i,1};
+           tau_fromFloating_berdy.computedTauFromBerdy_ordered.roty{i,1}.tau   = tau_fromFloating_berdy.computedTauFromBerdy(j).values;
+        end
+    end
+end
+% ---rot_z
+tau_fromFloating_berdy.computedTauFromBerdy_ordered.rotz = cell(length(var_fromFloating.estimated_variables.intForce.rotz),1);
+for i = 1 : length(var_fromFloating.estimated_variables.intForce.rotz)
+    for j = 1 : size(tau_fromFloating_berdy.computedTauFromBerdy,2)
+        if strcmp(var_fromFixed_struct.extractedVariables.jointList.list_rotz{i,1}, cell2mat(tau_fromFloating_berdy.computedTauFromBerdy(j).label))
+           tau_fromFloating_berdy.computedTauFromBerdy_ordered.rotz{i,1}.label = var_fromFixed_struct.extractedVariables.jointList.list_rotz{i,1};
+           tau_fromFloating_berdy.computedTauFromBerdy_ordered.rotz{i,1}.tau   = tau_fromFloating_berdy.computedTauFromBerdy(j).values;
+        end
+    end
+end
 
 %% =========================== TAU COMPARISON =============================
 % cutting rotx data
 for i = 1 : length(var_fromFloating.estimated_variables.intForce.rotx)
     var_fromFloating.estimated_variables.intForce.rotx{i, 1}.projected_tau =  ...
         var_fromFloating.estimated_variables.intForce.rotx{i, 1}.projected_tau(:,range_cut_plot);
-    var_fromFixed.estimated_variables.tau.rotx{i, 1}.tau =  ...
-        var_fromFixed.estimated_variables.tau.rotx{i, 1}.tau(:,range_cut_plot);
+    var_fromFixed.tau.rotx{i, 1}.tau =  ...
+        var_fromFixed.tau.rotx{i, 1}.tau(:,range_cut_plot);
 end
+
 % rotx plots             
 for i = 1 : length(var_fromFloating.estimated_variables.intForce.rotx)
     fig = figure();
@@ -34,7 +77,9 @@ for i = 1 : length(var_fromFloating.estimated_variables.intForce.rotx)
               grid on;
     plot1 = plot(var_fromFloating.estimated_variables.intForce.rotx{i, 1}.projected_tau,'b','lineWidth',1.5);
     hold on;
-    plot2 = plot(var_fromFixed.estimated_variables.tau.rotx{i, 1}.tau,'r','lineWidth',1.5);
+    plot2 = plot(var_fromFixed.tau.rotx{i, 1}.tau,'r','lineWidth',1.5);
+    hold on;
+    plot3 = plot(tau_fromFloating_berdy.computedTauFromBerdy_ordered.rotx{i,1}.tau,'g','lineWidth',1.5);
     ylabel('Torque [Nm]','HorizontalAlignment','center',...
        'FontWeight','bold',...
        'FontSize',18,...
@@ -42,7 +87,7 @@ for i = 1 : length(var_fromFloating.estimated_variables.intForce.rotx)
    xlabel('N samples');
    title(sprintf('%s', var_fromFloating.estimated_variables.intForce.rotx{i, 1}.label), 'Interpreter', 'none');
    
-   leg = legend([plot1,plot2],{'floating','fixed'});
+   leg = legend([plot1,plot3,plot2],{'floating (manual)','floating (berdy)','fixed'});
    set(leg,'FontSize',13);
 end
 
@@ -51,8 +96,8 @@ end
 for i = 1 : length(var_fromFloating.estimated_variables.intForce.roty)
     var_fromFloating.estimated_variables.intForce.roty{i, 1}.projected_tau =  ...
         var_fromFloating.estimated_variables.intForce.roty{i, 1}.projected_tau(:,range_cut_plot);
-    var_fromFixed.estimated_variables.tau.roty{i, 1}.tau =  ...
-        var_fromFixed.estimated_variables.tau.roty{i, 1}.tau(:,range_cut_plot);
+    var_fromFixed.tau.roty{i, 1}.tau =  ...
+        var_fromFixed.tau.roty{i, 1}.tau(:,range_cut_plot);
 end
 % roty plots             
 for i = 1 : length(var_fromFloating.estimated_variables.intForce.roty)
@@ -63,15 +108,17 @@ for i = 1 : length(var_fromFloating.estimated_variables.intForce.roty)
               grid on;
     plot1 = plot(var_fromFloating.estimated_variables.intForce.roty{i, 1}.projected_tau,'b','lineWidth',1.5);
     hold on;
-    plot2 = plot(var_fromFixed.estimated_variables.tau.roty{i, 1}.tau,'r','lineWidth',1.5);
+    plot2 = plot(var_fromFixed.tau.roty{i, 1}.tau,'r','lineWidth',1.5);
+    hold on;
+    plot3 = plot(tau_fromFloating_berdy.computedTauFromBerdy_ordered.roty{i,1}.tau,'g','lineWidth',1.5);
     ylabel('Torque [Nm]','HorizontalAlignment','center',...
        'FontWeight','bold',...
        'FontSize',18,...
        'Interpreter','latex');
    xlabel('N samples');
    title(sprintf('%s', var_fromFloating.estimated_variables.intForce.roty{i, 1}.label), 'Interpreter', 'none');
-      
-   leg = legend([plot1,plot2],{'floating','fixed'});
+   
+   leg = legend([plot1,plot3,plot2],{'floating (manual)','floating (berdy)','fixed'});
    set(leg,'FontSize',13);
 end
 
@@ -80,10 +127,10 @@ end
 for i = 1 : length(var_fromFloating.estimated_variables.intForce.rotz)
     var_fromFloating.estimated_variables.intForce.rotz{i, 1}.projected_tau =  ...
         var_fromFloating.estimated_variables.intForce.rotz{i, 1}.projected_tau(:,range_cut_plot);
-    var_fromFixed.estimated_variables.tau.rotz{i, 1}.tau =  ...
-        var_fromFixed.estimated_variables.tau.rotz{i, 1}.tau(:,range_cut_plot);
+    var_fromFixed.tau.rotz{i, 1}.tau =  ...
+        var_fromFixed.tau.rotz{i, 1}.tau(:,range_cut_plot);
 end
-% roty plots             
+% rotz plots
 for i = 1 : length(var_fromFloating.estimated_variables.intForce.rotz)
     fig = figure();
     axes1 = axes('Parent',fig,'FontSize',16);
@@ -92,7 +139,9 @@ for i = 1 : length(var_fromFloating.estimated_variables.intForce.rotz)
               grid on;
     plot1 = plot(var_fromFloating.estimated_variables.intForce.rotz{i, 1}.projected_tau,'b','lineWidth',1.5);
     hold on;
-    plot2 = plot(var_fromFixed.estimated_variables.tau.rotz{i, 1}.tau,'r','lineWidth',1.5);
+    plot2 = plot(var_fromFixed.tau.rotz{i, 1}.tau,'r','lineWidth',1.5);
+    hold on;
+    plot3 = plot(tau_fromFloating_berdy.computedTauFromBerdy_ordered.rotz{i,1}.tau,'g','lineWidth',1.5);
     ylabel('Torque [Nm]','HorizontalAlignment','center',...
        'FontWeight','bold',...
        'FontSize',18,...
@@ -100,23 +149,23 @@ for i = 1 : length(var_fromFloating.estimated_variables.intForce.rotz)
    xlabel('N samples');
    title(sprintf('%s', var_fromFloating.estimated_variables.intForce.rotz{i, 1}.label), 'Interpreter', 'none');
    
-   leg = legend([plot1,plot2],{'floating','fixed'});
+   leg = legend([plot1,plot3,plot2],{'floating (manual)','floating (berdy)','fixed'});
    set(leg,'FontSize',13);
 end
 
 %% ======================= fext (fz) COMPARISON ===========================
-baseLeftFoot = false;
+baseLeftFoot = true;
 
 if baseLeftFoot
     % cutting data
-    for i = 1 : length(var_fromFixed.estimated_variables.extForce)
-        var_fromFixed.estimated_variables.extForce{i, 1}.extForce = ...
-            var_fromFixed.estimated_variables.extForce{i, 1}.extForce(3,range_cut_plot);
+    for i = 1 : length(var_fromFixed.extForce)
+        var_fromFixed.extForce{i, 1}.extForce = ...
+            var_fromFixed.extForce{i, 1}.extForce(3,range_cut_plot);
         var_fromFloating.estimated_variables.extForce{i+1, 1}.extForce = ...
             var_fromFloating.estimated_variables.extForce{i+1, 1}.extForce(3,range_cut_plot);
     end
     % text plots
-    for i = 1 : length(var_fromFixed.estimated_variables.extForce)
+    for i = 1 : length(var_fromFixed.extForce)
         fig = figure();
         axes1 = axes('Parent',fig,'FontSize',16);
                   box(axes1,'on');
@@ -124,13 +173,13 @@ if baseLeftFoot
                   grid on;
         plot1 = plot(var_fromFloating.estimated_variables.extForce{i+1, 1}.extForce,'b','lineWidth',1.5);
         hold on;
-        plot2 = plot(var_fromFixed.estimated_variables.extForce{i, 1}.extForce,'r','lineWidth',1.5);
+        plot2 = plot(var_fromFixed.extForce{i, 1}.extForce,'r','lineWidth',1.5);
         ylabel('Force [N]','HorizontalAlignment','center',...
            'FontWeight','bold',...
            'FontSize',18,...
            'Interpreter','latex');
        xlabel('N samples');
-       title(sprintf('%s', var_fromFixed.estimated_variables.extForce{i, 1}.label), 'Interpreter', 'none');
+       title(sprintf('%s', var_fromFixed.extForce{i, 1}.label), 'Interpreter', 'none');
 
        leg = legend([plot1,plot2],{'floating','fixed'});
        set(leg,'FontSize',13);
@@ -164,15 +213,15 @@ else % i.e., RighFoot is the base --> tappullo!
     
     % cutting data
     rightFoot_base = rightFoot_base.extForce(3,range_cut_plot);
-    for i = 1 : length(var_fromFixed.estimated_variables.extForce)
-        var_fromFixed.estimated_variables.extForce{i, 1}.extForce = ...
-            var_fromFixed.estimated_variables.extForce{i, 1}.extForce(3,range_cut_plot);
+    for i = 1 : length(var_fromFixed.extForce)
+        var_fromFixed.extForce{i, 1}.extForce = ...
+            var_fromFixed.extForce{i, 1}.extForce(3,range_cut_plot);
         var_fromFloating.estimated_variables.extForce{i, 1}.extForce = ...
             var_fromFloating.estimated_variables.extForce{i, 1}.extForce(3,range_cut_plot);
     end
 
    % text plots
-    for i = 1 : length(var_fromFixed.estimated_variables.extForce)
+    for i = 1 : length(var_fromFixed.extForce)
         fig = figure();
         axes1 = axes('Parent',fig,'FontSize',16);
                   box(axes1,'on');
@@ -180,13 +229,13 @@ else % i.e., RighFoot is the base --> tappullo!
                   grid on;
         plot1 = plot(var_fromFloating.estimated_variables.extForce{i, 1}.extForce,'b','lineWidth',1.5);
         hold on;
-        plot2 = plot(var_fromFixed.estimated_variables.extForce{i, 1}.extForce,'r','lineWidth',1.5);
+        plot2 = plot(var_fromFixed.extForce{i, 1}.extForce,'r','lineWidth',1.5);
         ylabel('Force [N]','HorizontalAlignment','center',...
            'FontWeight','bold',...
            'FontSize',18,...
            'Interpreter','latex');
        xlabel('N samples');
-       title(sprintf('%s', var_fromFixed.estimated_variables.extForce{i, 1}.label), 'Interpreter', 'none');
+       title(sprintf('%s', var_fromFixed.extForce{i, 1}.label), 'Interpreter', 'none');
 
        leg = legend([plot1,plot2],{'floating','fixed'});
        set(leg,'FontSize',13);
