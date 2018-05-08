@@ -324,6 +324,11 @@ data = dataPackaging(humanModel,...
                      human_ddq,...
                      bucket.contactLink);
 
+% test
+measuredForces.righFoot = data(84).meas; %rightFoot
+measuredForces.leftFoot = data(76).meas; %leftFoot
+save(fullfile(bucket.pathToProcessedData,'/measuredForces.mat'),'measuredForces');
+
 % % test 3: to constrain the accelerometer on the LeftFoot to be [0 0 9.81]
 % % with a small associated variance.
 % data(17).meas = repmat([0;0;9.81],1,size(data(17).meas,2));
@@ -455,4 +460,4 @@ end
 %% testing
 
 TEST_FLOATING_compareVariables;
-
+TEST_OFFSET;
